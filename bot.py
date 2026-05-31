@@ -2,8 +2,8 @@ import os
 import telebot
 from groq import Groq
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+TELEGRAM_TOKEN = os.environ.get"8908187925:AAHXae2QT30AydTzSjFWa1oANIAU9v_InyU"
+GROQ_API_KEY = os.environ.get"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"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 client = Groq(api_key=GROQ_API_KEY)
