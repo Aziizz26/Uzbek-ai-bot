@@ -1,9 +1,8 @@
-import os
 import telebot
 from groq import Groq
 
-TELEGRAM_TOKEN = os.environ.get"8908187925:AAHXae2QT30AydTzSjFWa1oANIAU9v_InyU"
-GROQ_API_KEY = os.environ.get"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"
+TELEGRAM_TOKEN = "8908187925:AAHXae2QT30AydTzSjFWa1oANIAU9v_InyU"
+GROQ_API_KEY = "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"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 client = Groq(api_key=GROQ_API_KEY)
@@ -29,7 +28,7 @@ def handle(message):
     try:
         res = client.chat.completions.create(
             model="llama3-70b-8192",
-            messages=[{"role": "system", "content": "Siz O'zbek tilidagi AI assistantsiz. Foydalanuvchi qaysi tilda yozsa o'sha tilda javob bering. Har doim do'stona va foydali bo'ling."}] + conversations[uid],
+            messages=[{"role": "system", "content": "Siz O'zbek tilidagi AI assistantsiz. Foydalanuvchi qaysi tilda yozsa o'sha tilda javob bering."}] + conversations[uid],
             max_tokens=1024
         )
         reply = res.choices[0].message.content
