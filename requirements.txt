@@ -1,4 +1,3 @@
-"Select All"
 import telebot
 import requests
 from groq import Groq
@@ -9,7 +8,7 @@ import docx
 TELEGRAM_TOKEN = "8908187925:AAHXae2QT30AydTzSjFWa1oANIAU9v_InyU"
 GROQ_API_KEY = "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"
 HF_API_KEY = "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"
-
+GEMINI_API_KEY = "AQ.Ab8RN6LCLuBBfszuYANrAswK-UxXHwtmn14g8iWY3RzLboTwHw"
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 client = Groq(api_key=GROQ_API_KEY)
 conversations = {}
