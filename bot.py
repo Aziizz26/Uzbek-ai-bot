@@ -27,7 +27,7 @@ def handle(message):
     bot.send_chat_action(message.chat.id, 'typing')
     try:
         res = client.chat.completions.create(
-            model="model="llama-3.3-70b-versatile",
+            model="llama-3.3-70b-versatile",
 ",
             messages=[{"role": "system", "content": "Siz O'zbek tilidagi AI assistantsiz. Foydalanuvchi qaysi tilda yozsa o'sha tilda javob bering."}] + conversations[uid],
             max_tokens=1024
