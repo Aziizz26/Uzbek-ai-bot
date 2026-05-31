@@ -1,3 +1,4 @@
+"Select All"
 import telebot
 import requests
 from groq import Groq
