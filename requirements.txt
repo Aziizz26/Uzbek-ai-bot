@@ -1,2 +1,138 @@
-pyTelegramBotAPI
-groq
+import telebot
+import requests
+from groq import Groq
+import PyPDF2
+import io
+import docx
+
+TELEGRAM_TOKEN = "8908187925:AAHXae2QT30AydTzSjFWa1oANIAU9v_InyU"
+GROQ_API_KEY = "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"
+HF_API_KEY = "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"
+
+bot = telebot.TeleBot(TELEGRAM_TOKEN)
+client = Groq(api_key=GROQ_API_KEY)
+conversations = {}
+
+SYSTEM_PROMPT = """Siz eng aqlli O'zbek AI Assistantsiz. 
+- Matematik, fizika, kimyo masalalarini bosqichma-bosqich yeching
+- Formulalarni aniq va tushunarli tushuntiring
+- Fayllarni tahlil qiling
+- Qaysi tilda yozilsa, o'sha tilda javob bering
+- Har doim do'stona va foydali bo'ling"""
+
+@bot.message_handler(commands=['start'])
+def start(message):
+    name = message.from_user.first_name
+    bot.reply_to(message,
+        f"Salom {name}! 👋\n\n"
+        "Men quyidagilarga yordam beraman:\n\n"
+        "💬 Savol — shunchaki yozing\n"
+        "🎨 Rasm — /rasm [tavsif]\n"
+        "📄 Fayl — PDF/Word fayl yuboring\n"
+        "🔢 Matematik — tenglamani yozing\n"
+        "⚗️ Kimyo/Fizika — savolingizni yozing\n"
+        "🔄 Tozalash — /clear"
+    )
+
+@bot.message_handler(commands=['clear'])
+def clear(message):
+    conversations[message.from_user.id] = []
+    bot.reply_to(message, "✅ Suhbat tozalandi!")
+
+@bot.message_handler(commands=['rasm'])
+def generate_image(message):
+    prompt = message.text.replace('/rasm', '').strip()
+    if not prompt:
+        bot.reply_to(message, "✏️ Misol: /rasm ko'k osmonda uchayotgan ot")
+        return
+    bot.reply_to(message, "🎨 Rasm yaratilmoqda... 30-60 sekund kuting!")
+    try:
+        headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+        response = requests.post(
+            "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
+            headers=headers,
+            json={"inputs": prompt},
+            timeout=60
+        )
+        if response.status_code == 200:
+            bot.send_photo(message.chat.id, response.content, caption=f"🎨 {prompt}")
+        else:
+            bot.reply_to(message, "❌ Rasm yaratishda xatolik. Qayta urining!")
+    except Exception as e:
+        bot.reply_to(message, f"❌ Xatolik: {str(e)}")
+
+@bot.message_handler(content_types=['document'])
+def handle_document(message):
+    bot.reply_to(message, "📄 Fayl qabul qilindi, o'qilmoqda...")
+    try:
+        file_info = bot.get_file(message.document.file_id)
+        file = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_info.file_path}")
+        file_name = message.document.file_name.lower()
+        text = ""
+
+        if file_name.endswith('.pdf'):
+            reader = PyPDF2.PdfReader(io.BytesIO(file.content))
+            for page in reader.pages:
+                text += page.extract_text() + "\n"
+
+        elif file_name.endswith('.docx'):
+            doc = docx.Document(io.BytesIO(file.content))
+            for para in doc.paragraphs:
+                text += para.text + "\n"
+
+        elif file_name.endswith('.txt'):
+            text = file.content.decode('utf-8')
+
+        else:
+            bot.reply_to(message, "❌ Faqat PDF, Word (.docx) va TXT fayllar qabul qilinadi!")
+            return
+
+        if not text.strip():
+            bot.reply_to(message, "❌ Fayldan matn o'qib bo'lmadi!")
+            return
+
+        caption = message.caption or "Bu faylni tahlil qil va asosiy ma'lumotlarini aytib ber"
+        uid = message.from_user.id
+        if uid not in conversations:
+            conversations[uid] = []
+
+        conversations[uid].append({
+            "role": "user",
+            "content": f"{caption}\n\nFayl matni:\n{text[:4000]}"
+        })
+
+        res = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + conversations[uid],
+            max_tokens=1024
+        )
+        reply = res.choices[0].message.content
+        conversations[uid].append({"role": "assistant", "content": reply})
+        bot.reply_to(message, reply)
+
+    except Exception as e:
+        bot.reply_to(message, f"❌ Xatolik: {str(e)}")
+
+@bot.message_handler(func=lambda m: True)
+def handle(message):
+    uid = message.from_user.id
+    if uid not in conversations:
+        conversations[uid] = []
+    conversations[uid].append({"role": "user", "content": message.text})
+    bot.send_chat_action(message.chat.id, 'typing')
+    try:
+        res = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + conversations[uid],
+            max_tokens=2048
+        )
+        reply = res.choices[0].message.content
+        conversations[uid].append({"role": "assistant", "content": reply})
+        if len(conversations[uid]) > 20:
+            conversations[uid] = conversations[uid][-20:]
+        bot.reply_to(message, reply)
+    except Exception as e:
+        bot.reply_to(message, f"❌ Xatolik: {str(e)}")
+
+print("✅ Bot ishga tushdi!")
+bot.polling(none_stop=True)
